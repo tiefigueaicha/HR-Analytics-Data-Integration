@@ -1,0 +1,23 @@
+[
+    {
+        "employee_id": 1001,
+        "first_name": "Aminata",
+        "last_name": "Diallo",
+        "department": "Finance",
+        "email": "aminata@example.com"
+    },
+    {
+        "employee_id": 1002,
+        "first_name": "Jean",
+        "last_name": "Kouassi",
+        "department": "IT",
+        "email": "jean@example.com"
+    },
+    {
+        "employee_id": 1003,
+        "first_name": "Fatou",
+        "last_name": "Traore",
+        "department": "RH",
+        "email": "fatou@example.com"
+    }
+]

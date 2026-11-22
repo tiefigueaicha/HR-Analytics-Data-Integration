@@ -1,0 +1,18 @@
+[
+    {
+        "employee_id": 1001,
+        "absence_days": 5
+    },
+    {
+        "employee_id": 1002,
+        "absence_days": -12
+    },
+    {
+        "employee_id": 1002,
+        "absence_days": 8
+    },
+    {
+        "employee_id": 1004,
+        "absence_days": 3
+    }
+]

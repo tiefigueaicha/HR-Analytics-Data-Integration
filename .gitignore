@@ -1,0 +1,11 @@
+# Informations confidentielles
+.env
+
+# Environnements Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Fichiers temporaires
+*.log

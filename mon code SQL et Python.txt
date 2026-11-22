@@ -1,0 +1,299 @@
+1 .  from pathlib import Path
+import pandas as pd
+
+# 1. Définir le chemin du projet
+ROOT = Path(__file__).resolve().parents[1]
+
+# 2. Localiser le fichier CSV
+file_path = ROOT / "data" / "raw" / "WA_Fn-UseC_-HR-Employee-Attrition.csv"
+
+# 3. Charger les données
+df = pd.read_csv(file_path)
+
+# 4. Afficher les premières informations
+print("DIMENSIONS DU DATASET")
+print(df.shape)
+
+print("\nAPERÇU DES DONNÉES")
+print(df.head())
+
+print("\nLISTE DES COLONNES")
+print(df.columns.tolist())
+
+print("\nTYPES DE DONNÉES")
+print(df.dtypes)
+
+print("\nVALEURS MANQUANTES")
+print(df.isna().sum())
+
+print("\nNOMBRE DE DOUBLONS")
+print(df.duplicated().sum())
+
+
+
+
+2. from pathlib import Path
+import pandas as pd
+
+# 1. Définir le chemin du projet
+ROOT = Path(__file__).resolve().parents[1]
+
+# 2. Charger les données originales
+input_file = ROOT / "data" / "raw" / "WA_Fn-UseC_-HR-Employee-Attrition.csv"
+
+df = pd.read_csv(input_file)
+
+print("Données initiales :", df.shape)
+
+# 3. Supprimer les doublons
+df = df.drop_duplicates()
+
+# 4. Supprimer les colonnes inutiles
+columns_to_remove = [
+    "EmployeeCount",
+    "Over18",
+    "StandardHours"
+]
+
+df = df.drop(columns=columns_to_remove)
+
+# 5. Uniformiser les noms des colonnes
+df.columns = (
+    df.columns
+    .str.strip()
+    .str.lower()
+    .str.replace(" ", "_")
+)
+
+# 6. Créer le dossier de destination
+output_folder = ROOT / "data" / "processed"
+output_folder.mkdir(parents=True, exist_ok=True)
+
+# 7. Enregistrer les données nettoyées
+output_file = output_folder / "hr_employee_clean.csv"
+
+df.to_csv(output_file, index=False)
+
+print("Données après nettoyage :", df.shape)
+print("Fichier nettoyé enregistré :", output_file)
+
+
+
+3.from pathlib import Path
+import pandas as pd
+from sqlalchemy import create_engine, text
+
+# 1. Définir le chemin du projet
+ROOT = Path(__file__).resolve().parents[1]
+
+# 2. Charger le fichier nettoyé
+file_path = ROOT / "data" / "processed" / "hr_employee_clean.csv"
+df = pd.read_csv(file_path)
+
+# 3. Paramètres de connexion PostgreSQL
+DB_USER = "postgres"
+DB_PASSWORD = "aichadata2027"
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "hr_analytics_db"
+
+# 4. Créer la connexion
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+# 5. Charger les données dans PostgreSQL
+df.to_sql(
+    name="employees",
+    con=engine,
+    if_exists="replace",
+    index=False
+)
+
+# 6. Vérifier le nombre d'employés chargés
+with engine.connect() as connection:
+    result = connection.execute(
+        text("SELECT COUNT(*) FROM employees")
+    )
+    print("Nombre d'employés dans PostgreSQL :", result.scalar())
+
+print("Chargement terminé avec succès !")
+
+
+
+
+4. from pathlib import Path
+import json
+import pandas as pd
+
+# Chemin principal du projet
+ROOT = Path(__file__).resolve().parents[1]
+
+# Chemins des deux fichiers JSON
+file_a = ROOT / "data" / "raw" / "hr_system_a.json"
+file_b = ROOT / "data" / "raw" / "hr_system_b.json"
+
+# Extraction des données du système A
+with open(file_a, "r", encoding="utf-8") as file:
+    data_a = json.load(file)
+
+# Extraction des données du système B
+with open(file_b, "r", encoding="utf-8") as file:
+    data_b = json.load(file)
+
+# Conversion en DataFrames
+df_employees = pd.DataFrame(data_a)
+df_absences = pd.DataFrame(data_b)
+
+# Affichage des résultats
+print("DONNEES DU SYSTEME RH A")
+print(df_employees)
+
+print("\nDONNEES DU SYSTEME RH B")
+print(df_absences)
+
+print("\nNOMBRE DE COLLABORATEURS :", len(df_employees))
+print("NOMBRE D'ENREGISTREMENTS D'ABSENCES :", len(df_absences))
+
+
+
+
+# Fusion des données des deux systèmes RH
+df_merged = pd.merge(
+    df_employees,
+    df_absences,
+    on="employee_id",
+    how="left"
+)
+
+print("\nDONNEES RH CENTRALISEES")
+print(df_merged)
+
+# CONTROLES DE QUALITE DES DONNEES
+
+print("\nCONTROLES DE QUALITE")
+
+# Détection des identifiants dupliqués
+print("\nIdentifiants dupliqués :")
+print(df_absences[df_absences.duplicated(
+    subset=["employee_id"], keep=False
+)])
+
+# Détection des valeurs négatives
+print("\nAbsences négatives :")
+print(df_absences[df_absences["absence_days"] < 0])
+
+# Détection des employés inconnus
+unknown_employees = df_absences[
+    ~df_absences["employee_id"].isin(df_employees["employee_id"])
+]
+
+print("\nEmployés absents du système A :")
+print(unknown_employees)
+
+
+
+# NETTOYAGE DES DONNEES
+
+# Identifier les employés ayant plusieurs enregistrements
+duplicate_ids = df_absences.loc[
+    df_absences.duplicated(
+        subset=["employee_id"],
+        keep=False
+    ),
+    "employee_id"
+].unique()
+
+# Conserver uniquement les enregistrements fiables
+valid_absences = df_absences[
+    (~df_absences["employee_id"].isin(duplicate_ids))
+    & (df_absences["absence_days"] >= 0)
+    & (df_absences["employee_id"].isin(df_employees["employee_id"]))
+].copy()
+
+print("\nDONNEES D'ABSENCES APRES NETTOYAGE")
+print(valid_absences)
+
+# Fusionner les données des deux systèmes
+df_integrated = pd.merge(
+    df_employees,
+    valid_absences,
+    on="employee_id",
+    how="left"
+)
+
+print("\nDONNEES RH INTEGREES ET NETTOYEES")
+print(df_integrated)
+
+
+
+
+from sqlalchemy import create_engine
+
+# CONNEXION A POSTGRESQL
+
+DB_USER = "postgres"
+DB_PASSWORD = "aichadata2027"
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "hr_analytics_db"
+
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+# CHARGEMENT DES DONNEES INTEGREES
+
+df_integrated.to_sql(
+    name="hr_employees_integrated",
+    con=engine,
+    if_exists="append",
+    index=False
+)
+
+print("\nChargement dans PostgreSQL terminé !")
+
+
+
+5. [
+    {
+        "employee_id": 1001,
+        "first_name": "Aminata",
+        "last_name": "Diallo",
+        "department": "Finance",
+        "email": "aminata@example.com"
+    },
+    {
+        "employee_id": 1002,
+        "first_name": "Jean",
+        "last_name": "Kouassi",
+        "department": "IT",
+        "email": "jean@example.com"
+    },
+    {
+        "employee_id": 1003,
+        "first_name": "Fatou",
+        "last_name": "Traore",
+        "department": "RH",
+        "email": "fatou@example.com"
+    }
+]
+
+[
+    {
+        "employee_id": 1001,
+        "absence_days": 5
+    },
+    {
+        "employee_id": 1002,
+        "absence_days": -12
+    },
+    {
+        "employee_id": 1002,
+        "absence_days": 8
+    },
+    {
+        "employee_id": 1004,
+        "absence_days": 3
+    }
+]
