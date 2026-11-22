@@ -9,3 +9,8 @@ __pycache__/
 
 # Fichiers temporaires
 *.log
+
+
+# Jeux de données CSV
+data/raw/*.csv
+data/processed/*.csv
